@@ -12,6 +12,7 @@ import MultipeerConnectivity
 class MainViewController: UIViewController, MCBrowserViewControllerDelegate {
     
     var level: Level?
+    var isMaster = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -37,6 +38,7 @@ class MainViewController: UIViewController, MCBrowserViewControllerDelegate {
     
     func browserViewControllerDidFinish(_ browserViewController: MCBrowserViewController) {
         MPCHandler.defaultHandler.browser.dismiss(animated: true, completion: nil)
+        isMaster = true
         level = Level(width: 10, height: 10)
         level!.renderMap()
         
@@ -60,7 +62,8 @@ class MainViewController: UIViewController, MCBrowserViewControllerDelegate {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         let gameVC = storyboard.instantiateViewController(withIdentifier: "GameViewController") as! GameViewController
         gameVC.level = level
-        gameVC.singlePlayer = true
+        gameVC.singlePlayer = false
+        gameVC.isMaster = isMaster
         
         self.present(gameVC, animated: true, completion: nil)
     }
@@ -71,5 +74,13 @@ extension MainViewController: MPCHandlerDelegate {
         self.level = level
         level.renderMap()
         startMultiplayerGame()
+    }
+    
+    func didRecievePlayerInfo(playerInfo: PlayerInfo) {
+        
+    }
+    
+    func didRecieveBulletInfo(bulletInfo: BulletInfo) {
+        
     }
 }

@@ -8,6 +8,7 @@
 
 import UIKit
 import SpriteKit
+import MultipeerConnectivity
 
 class PlayerNode: SKSpriteNode {
     
@@ -23,7 +24,8 @@ class PlayerNode: SKSpriteNode {
             }
         }
     }
-    var playerInfo: PlayerInfo!
+    
+    var peerId: MCPeerID?
     var previousPostition: CGPoint!
     var isDashing = false
     
@@ -46,19 +48,20 @@ class PlayerNode: SKSpriteNode {
         self.shadowCastBitMask = 0
         
         if let info = playerInfo {
-            self.playerInfo = info
+            self.peerId = info.peerID
             self.previousPostition = info.position
             self.position = info.position
-            
-        } else {
-            self.playerInfo = PlayerInfo(uuid: UUID(), name: UIDevice.current.name, position: CGPoint())
+            self.isInfected = info.isInfected
         }
     }
     
     func setPlayerPosition(position: CGPoint) {
         self.previousPostition = self.position
         self.position = position
-        self.playerInfo.position = position
+    }
+    
+    func getInfo() -> PlayerInfo {
+        return PlayerInfo(peerID: peerId!, position: position, isInfected: isInfected)
     }
     
     func setVelocity(_ velocity: CGVector) {

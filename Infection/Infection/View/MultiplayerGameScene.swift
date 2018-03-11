@@ -8,6 +8,7 @@
 
 import SpriteKit
 import GameplayKit
+import MultipeerConnectivity
 
 class MultiplayerGameScene: SKScene, SKPhysicsContactDelegate {
     
@@ -16,13 +17,20 @@ class MultiplayerGameScene: SKScene, SKPhysicsContactDelegate {
     var joystick = Joystick()
     var dashButton = DashButton()
     var players: [PlayerNode] = []
-    var player = PlayerNode(playerInfo: nil)
+    var player: PlayerNode!
     var cameraSet = false
     var level: Level!
+    var addedIds = Set<MCPeerID>()
+    var isMaster = false
     
     convenience init(level: Level, size: CGSize) {
         self.init(size: size)
         self.level = level
+        
+        MPCHandler.defaultHandler.delegate = self
+        let playerInfo = PlayerInfo(peerID: MPCHandler.defaultHandler.peerID, position: CGPoint(), isInfected: false)
+        self.player = PlayerNode(playerInfo: playerInfo)
+        level.placePlayer(player: player)
         
         for wall in level.walls {
             self.addChild(wall)
@@ -47,7 +55,6 @@ class MultiplayerGameScene: SKScene, SKPhysicsContactDelegate {
         self.physicsWorld.contactDelegate = self
         self.backgroundColor = .black
         
-        level.placePlayer(player: player)
         players.append(player)
         self.addChild(player)
     }
@@ -76,6 +83,10 @@ class MultiplayerGameScene: SKScene, SKPhysicsContactDelegate {
             
             self.camera!.run(group, completion: {
                 self.cameraSet = true
+                if self.isMaster {
+                    self.player.isInfected = true
+                    MPCHandler.defaultHandler.sendMessage(message: self.player.getInfo().getMessage())
+                }
             })
         }
     }
@@ -107,6 +118,8 @@ class MultiplayerGameScene: SKScene, SKPhysicsContactDelegate {
         if cameraSet {
             camera!.run(SKAction.move(to: player.position, duration: 0.1))
         }
+        
+        MPCHandler.defaultHandler.sendMessage(message: player.getInfo().getMessage())
     }
 }
 
@@ -117,22 +130,17 @@ extension MultiplayerGameScene {
             run(SKAction.playSoundFileNamed("pew-pew-lei.caf", waitForCompletion: false))
         }
         
-        let projectile = BulletNode()
+        let info = BulletInfo(peerID: player.peerId!, position: CGPoint(), velocity: CGVector())
+        let projectile = BulletNode(bulletInfo: info)
         let offset = pos - player.position
         let direction = offset.normalized()
         projectile.position = CGPoint(x: player.position.x + 0.01*direction.x, y: player.position.y + 0.01*direction.y)
         
         let shootVector = CGVector(dx: direction.x * BulletNode.SPEED, dy: direction.y * BulletNode.SPEED)
         projectile.physicsBody?.velocity = shootVector
-        addChild(projectile)
-    }
-    
-    func isFiringTouch(touch: UITouch) -> Bool {
-        let pos = touch.preciseLocation(in: self.view)
-        let prevPos = touch.previousLocation(in: self.view)
-        let thisDistance = pos.distance(to: prevPos)
         
-        return thisDistance <= 5
+        MPCHandler.defaultHandler.sendMessage(message: projectile.getInfo().getMessage())
+        addChild(projectile)
     }
 }
 
@@ -148,7 +156,7 @@ extension MultiplayerGameScene {
             
         case BitMask.bullet.rawValue | BitMask.player.rawValue:
             let hitPlayer = contact.bodyA.node as! PlayerNode
-            if hitPlayer.isInfected {
+            if hitPlayer.peerId != (contact.bodyB.node! as! BulletNode).peerID {
                 contact.bodyB.node?.removeFromParent()
                 hitPlayer.removeFromParent()
                 level.placePlayer(player: hitPlayer)
@@ -176,3 +184,27 @@ extension MultiplayerGameScene {
     }
 }
 
+
+extension MultiplayerGameScene: MPCHandlerDelegate {
+    func didRecieveLevel(level: Level) {
+        print("This shouldn't happen....")
+    }
+    
+    func didRecievePlayerInfo(playerInfo: PlayerInfo) {
+        if !addedIds.contains(playerInfo.peerID) {
+            addedIds.insert(playerInfo.peerID)
+            let player = PlayerNode(playerInfo: playerInfo)
+            players.append(player)
+            self.addChild(player)
+        } else {
+            let player = players.filter({ $0.peerId! == playerInfo.peerID }).first!
+            player.setPlayerPosition(position: playerInfo.position)
+            player.isInfected = playerInfo.isInfected
+        }
+    }
+    
+    func didRecieveBulletInfo(bulletInfo: BulletInfo) {
+        let bullet = BulletNode(bulletInfo: bulletInfo)
+        self.addChild(bullet)
+    }
+}

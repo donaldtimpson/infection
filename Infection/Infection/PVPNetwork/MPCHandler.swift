@@ -11,6 +11,8 @@ import MultipeerConnectivity
 
 protocol MPCHandlerDelegate: class {
     func didRecieveLevel(level: Level)
+    func didRecievePlayerInfo(playerInfo: PlayerInfo)
+    func didRecieveBulletInfo(bulletInfo: BulletInfo)
 }
 
 enum NotificationName: String {
@@ -88,6 +90,14 @@ class MPCHandler: NSObject, MCSessionDelegate {
             case "level":
                 let level = Level(encodedString: value as! String)
                 DispatchQueue.main.async { self.delegate?.didRecieveLevel(level: level) }
+            case "playerInfo":
+                var message = value as! Dictionary<String, Any>
+                message["peerID"] = peerID
+                DispatchQueue.main.async { self.delegate?.didRecievePlayerInfo(playerInfo: PlayerInfo(message: message)) }
+            case "bulletInfo":
+                var message = value as! Dictionary<String, Any>
+                message["peerID"] = peerID
+                DispatchQueue.main.async { self.delegate?.didRecieveBulletInfo(bulletInfo: BulletInfo(message: message)) }
             default:
                 print("NOT HANDLING KEY: \(key)")
             }

@@ -9,6 +9,14 @@
 import SpriteKit
 import GameplayKit
 
+
+enum BitMask: UInt32 {
+    case player = 1
+    case wall = 2
+    case bullet = 4
+    case light = 8
+}
+
 class SinglePlayerGameScene: SKScene, SKPhysicsContactDelegate {
     
     let TIME_TILL_ZOMBIES_MOVE = 5.0
@@ -152,7 +160,7 @@ extension SinglePlayerGameScene {
             run(SKAction.playSoundFileNamed("pew-pew-lei.caf", waitForCompletion: false))
         }
         
-        let projectile = BulletNode()
+        let projectile = BulletNode(bulletInfo: nil)
         let offset = pos - player.position
         let direction = offset.normalized()
         projectile.position = CGPoint(x: player.position.x + 0.01*direction.x, y: player.position.y + 0.01*direction.y)
@@ -160,14 +168,6 @@ extension SinglePlayerGameScene {
         let shootVector = CGVector(dx: direction.x * BulletNode.SPEED, dy: direction.y * BulletNode.SPEED)
         projectile.physicsBody?.velocity = shootVector
         addChild(projectile)
-    }
-    
-    func isFiringTouch(touch: UITouch) -> Bool {
-        let pos = touch.preciseLocation(in: self.view)
-        let prevPos = touch.previousLocation(in: self.view)
-        let thisDistance = pos.distance(to: prevPos)
-        
-        return thisDistance <= 5
     }
 }
 
