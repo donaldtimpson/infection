@@ -9,6 +9,10 @@
 import UIKit
 import MultipeerConnectivity
 
+protocol MPCHandlerDelegate: class {
+    func didRecieveLevel(level: Level)
+}
+
 enum NotificationName: String {
     case didChangeState = "MPC_DidChangeStateNotification"
     case didReceiveData = "MPC_DidReceiveDataNotification"
@@ -32,6 +36,7 @@ class MPCHandler: NSObject, MCSessionDelegate {
         }
     }
     
+    weak var delegate: MPCHandlerDelegate?
     var peerID: MCPeerID!
     var session: MCSession!
     var advertiser: MCAdvertiserAssistant? = nil
@@ -75,9 +80,17 @@ class MPCHandler: NSObject, MCSessionDelegate {
     }
     
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-        let userInfo: [String: Any] = ["peerID": peerID, "data": data]
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: NotificationName.didReceiveData.name(), object: nil, userInfo: userInfo)
+        
+        let message = try! JSONSerialization.jsonObject(with: data, options: .allowFragments) as! Dictionary<String, Any>
+        
+        for (key,value) in message {
+            switch key {
+            case "level":
+                let level = Level(encodedString: value as! String)
+                DispatchQueue.main.async { self.delegate?.didRecieveLevel(level: level) }
+            default:
+                print("NOT HANDLING KEY: \(key)")
+            }
         }
     }
     

@@ -15,24 +15,7 @@ class MainViewController: UIViewController, MCBrowserViewControllerDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(peerChangedStateWithNotification), name: NotificationName.didChangeState.name(), object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(peerReceiveDataWithNotification), name: NotificationName.didReceiveData.name(), object: nil)
-    }
-    
-    @objc func peerChangedStateWithNotification(_ notification: NSNotification) {
-        
-    }
-    
-    @objc func peerReceiveDataWithNotification(_ notification: NSNotification) {
-        let userInfo = notification.userInfo!
-        let recievedData = userInfo["data"] as! Data
-        let message = try! JSONSerialization.jsonObject(with: recievedData, options: .allowFragments) as! Dictionary<String, Any>
-        let levelString = message["level"] as! String
-        
-        self.level = Level(encodedString: levelString)
-        self.level!.renderMap()
-        startMultiplayerGame()
+        MPCHandler.defaultHandler.delegate = self
     }
     
     @IBAction func singlePlayerButtonPressed(_ sender: UIButton) {
@@ -83,3 +66,10 @@ class MainViewController: UIViewController, MCBrowserViewControllerDelegate {
     }
 }
 
+extension MainViewController: MPCHandlerDelegate {
+    func didRecieveLevel(level: Level) {
+        self.level = level
+        level.renderMap()
+        startMultiplayerGame()
+    }
+}
